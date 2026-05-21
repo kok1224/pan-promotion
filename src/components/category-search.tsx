@@ -16,7 +16,7 @@ export function CategorySearch({ category, currentSearch = '' }: CategorySearchP
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (keyword.trim()) {
-      router.push(`/search?keyword=${encodeURIComponent(keyword.trim())}&category=${category}`)
+      router.push(`/search?q=${encodeURIComponent(keyword.trim())}&category=${category}`)
     }
   }
 

@@ -82,7 +82,7 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="md:hidden mr-2" render={<Button variant="ghost" size="icon">
+          <DropdownMenuTrigger className="md:hidden mr-2" nativeButton={false} render={<Button variant="ghost" size="icon">
               <Menu className="h-5 w-5" />
             </Button>} />
           <DropdownMenuContent align="end" className="w-48">
@@ -101,7 +101,7 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <DropdownMenuTrigger nativeButton={false} render={<Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username || 'User'} />
                     <AvatarFallback>{profile?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
@@ -141,7 +141,7 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button render={<Link href="/login">登录</Link>} size="sm" />
+            <Button render={<Link href="/login">登录</Link>} size="sm" nativeButton={false} />
           )}
         </div>
       </div>

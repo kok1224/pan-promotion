@@ -44,9 +44,10 @@ async function searchResources(
 }
 
 export async function generateMetadata({ searchParams }: PageProps) {
-  const { q } = await searchParams
+  const { q, keyword } = await searchParams
+  const searchQuery = q || keyword || ''
   return {
-    title: q ? `搜索: ${q} - 云盘资源站` : '搜索 - 云盘资源站',
+    title: searchQuery ? `搜索: ${searchQuery} - 云盘资源站` : '搜索 - 云盘资源站',
   }
 }
 
@@ -67,10 +68,11 @@ function SearchSkeleton() {
 }
 
 export default async function SearchPage({ searchParams }: PageProps) {
-  const { q, category, page } = await searchParams
+  const { q, keyword, category, page } = await searchParams
   const currentPage = parseInt(page || '1')
+  const searchQuery = q || keyword || ''
 
-  if (!q) {
+  if (!searchQuery) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="container max-w-2xl mx-auto text-center">
@@ -81,7 +83,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     )
   }
 
-  const results = await searchResources(q, category, currentPage)
+  const results = await searchResources(searchQuery, category, currentPage)
   const totalPages = Math.ceil(results.total / PAGE_SIZE)
 
   return (
@@ -90,7 +92,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         {/* Search Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-4">
-            搜索结果: &ldquo;{q}&rdquo;
+            搜索结果: &ldquo;{searchQuery}&rdquo;
           </h1>
           <p className="text-muted-foreground mb-4">
             找到 {results.total.toLocaleString()} 个相关资源
@@ -102,14 +104,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <Badge
               variant={!category ? 'default' : 'outline'}
               className="cursor-pointer"
-              render={<Link href={`/search?q=${encodeURIComponent(q)}`}>全部</Link>}
+              render={<Link href={`/search?q=${encodeURIComponent(searchQuery)}`}>全部</Link>}
             />
             {CATEGORIES.map((cat) => (
               <Badge
                 key={cat}
                 variant={category === cat ? 'default' : 'outline'}
                 className="cursor-pointer"
-                render={<Link href={`/search?q=${encodeURIComponent(q)}&category=${cat}`}>
+                render={<Link href={`/search?q=${encodeURIComponent(searchQuery)}&category=${cat}`}>
                   {CATEGORY_NAMES[cat]}
                 </Link>}
               />
@@ -132,7 +134,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 <div className="flex justify-center gap-2 mt-8">
                   {currentPage > 1 && (
                     <a
-                      href={`/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}&page=${currentPage - 1}`}
+                      href={`/search?q=${encodeURIComponent(searchQuery)}${category ? `&category=${category}` : ''}&page=${currentPage - 1}`}
                       className="px-4 py-2 border rounded-md hover:bg-gray-50"
                     >
                       上一页
@@ -143,7 +145,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     return (
                       <a
                         key={pageNum}
-                        href={`/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}&page=${pageNum}`}
+                        href={`/search?q=${encodeURIComponent(searchQuery)}${category ? `&category=${category}` : ''}&page=${pageNum}`}
                         className={`px-4 py-2 border rounded-md ${
                           pageNum === currentPage ? 'bg-primary text-white' : 'hover:bg-gray-50'
                         }`}
@@ -154,7 +156,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   })}
                   {currentPage < totalPages && (
                     <a
-                      href={`/search?q=${encodeURIComponent(q)}${category ? `&category=${category}` : ''}&page=${currentPage + 1}`}
+                      href={`/search?q=${encodeURIComponent(searchQuery)}${category ? `&category=${category}` : ''}&page=${currentPage + 1}`}
                       className="px-4 py-2 border rounded-md hover:bg-gray-50"
                     >
                       下一页
