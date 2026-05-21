@@ -107,8 +107,8 @@ export function ResourceCard({ resource, showCategory = true }: ResourceCardProp
               sizes="128px"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 rounded-l-lg">
-              <span className="text-4xl text-blue-300">
+            <div className="flex h-full items-center justify-center bg-muted rounded-l-lg">
+              <span className="text-4xl text-muted-foreground/30">
                 {CATEGORY_ICONS[resource.category]}
               </span>
             </div>
