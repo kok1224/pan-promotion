@@ -115,16 +115,16 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="container">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className={`bg-gradient-to-r ${CATEGORY_COLORS[cat]} text-white rounded-xl p-6 mb-6`}>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-lg">
+        <div className={`bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 mb-6`}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-[var(--primary)]/10">
               {CATEGORY_ICONS[cat]}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{CATEGORY_NAMES[cat]}资源</h1>
-              <p className="text-white/80 text-sm mt-1">
+              <h1 className="text-2xl font-bold text-[var(--foreground)]">{CATEGORY_NAMES[cat]}资源</h1>
+              <p className="text-[var(--muted-foreground)] text-sm mt-1">
                 共 {resources.total.toLocaleString()} 个资源
                 {tag && <span> · 标签：{tag}</span>}
                 {keyword && <span> · 搜索：{keyword}</span>}
