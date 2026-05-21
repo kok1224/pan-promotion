@@ -82,9 +82,9 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="md:hidden mr-2" nativeButton={false} render={<Button variant="ghost" size="icon">
+          <DropdownMenuTrigger nativeButton={false} render={<span className="md:hidden mr-2 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9">
               <Menu className="h-5 w-5" />
-            </Button>} />
+            </span>} />
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem render={<Link href="/">首页</Link>} />
             {CATEGORIES.map((cat) => (
@@ -101,12 +101,12 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger nativeButton={false} render={<Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <DropdownMenuTrigger nativeButton={false} render={<span className="relative inline-flex items-center justify-center rounded-full h-9 w-9">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username || 'User'} />
                     <AvatarFallback>{profile?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
                   </Avatar>
-                </Button>} />
+                </span>} />
               <DropdownMenuContent align="end" className="w-56">
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-0.5 leading-none">

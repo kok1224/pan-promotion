@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, ExternalLink, Eye, Clock, User } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Eye, Clock, User, Link2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ResourceWithLinks, CATEGORY_NAMES, Category } from '@/types/database'
 import { PLATFORM_NAMES, PLATFORM_COLORS } from '@/lib/constants'
@@ -19,6 +19,77 @@ const CATEGORY_MAP: Record<string, Category> = {
   movies: 'movie',
   novels: 'novel',
   games: 'game',
+}
+
+// 从 description 中提取网盘链接
+interface ExtractedLink {
+  url: string
+  password?: string
+  platform: 'baidu' | 'quark' | 'ali' | 'uc' | 'other'
+}
+
+function extractLinksFromDescription(description: string | null): ExtractedLink[] {
+  if (!description) return []
+
+  const links: ExtractedLink[] = []
+  const patterns = [
+    // 百度网盘: https://pan.baidu.com/s/xxx?pwd=xxx 或 https://pan.baidu.com/share/init?surl=xxx&pwd=xxx
+    /https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=([a-zA-Z0-9]+))?/gi,
+    /https?:\/\/pan\.baidu\.com\/share\/init\?surl=[a-zA-Z0-9_-]+(?:\&pwd=([a-zA-Z0-9]+))?/gi,
+    // 夸克网盘
+    /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi,
+    // 阿里云盘
+    /https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi,
+    // UC网盘
+    /https?:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9_-]+/gi,
+  ]
+
+  const baiduPattern = /https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=([a-zA-Z0-9]+))?/gi
+  let match
+  while ((match = baiduPattern.exec(description)) !== null) {
+    links.push({
+      url: match[0],
+      password: match[1] || undefined,
+      platform: 'baidu',
+    })
+  }
+
+  const quarkPattern = /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi
+  while ((match = quarkPattern.exec(description)) !== null) {
+    links.push({
+      url: match[0],
+      platform: 'quark',
+    })
+  }
+
+  const aliPattern = /https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi
+  while ((match = aliPattern.exec(description)) !== null) {
+    links.push({
+      url: match[0],
+      platform: 'ali',
+    })
+  }
+
+  return links
+}
+
+// 清理 description 中的网盘链接
+function cleanDescription(description: string | null): string | null {
+  if (!description) return null
+
+  // 移除网盘链接，保留其他内容
+  let cleaned = description
+    .replace(/https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=[a-zA-Z0-9]+)?/gi, '')
+    .replace(/https?:\/\/pan\.baidu\.com\/share\/init\?surl=[a-zA-Z0-9_-]+(?:\&pwd=[a-zA-Z0-9]+)?/gi, '')
+    .replace(/https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi, '')
+    .replace(/https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi, '')
+    .replace(/https?:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9_-]+/gi, '')
+    .trim()
+
+  // 移除多余的空行
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
+
+  return cleaned || null
 }
 
 async function getResource(category: string, id: string): Promise<ResourceWithLinks | null> {
@@ -86,6 +157,13 @@ export default async function ResourceDetailPage({ params }: PageProps) {
   const categoryName = CATEGORY_NAMES[resource.category]
   const sortedLinks = resource.pan_links?.sort((a, b) => a.sort_order - b.sort_order) || []
 
+  // 从 description 中提取网盘链接
+  const extractedLinks = extractLinksFromDescription(resource.description)
+  // 合并数据库链接和从 description 提取的链接
+  const allLinks = [...sortedLinks, ...extractedLinks]
+  // 清理 description（移除已提取的链接）
+  const cleanedDescription = cleanDescription(resource.description)
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="container max-w-4xl mx-auto">
@@ -151,10 +229,10 @@ export default async function ResourceDetailPage({ params }: PageProps) {
             )}
 
             {/* Description */}
-            {resource.description && (
+            {cleanedDescription && (
               <div>
                 <h2 className="font-semibold mb-2">简介</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap">{resource.description}</p>
+                <p className="text-muted-foreground whitespace-pre-wrap">{cleanedDescription}</p>
               </div>
             )}
 
@@ -164,13 +242,13 @@ export default async function ResourceDetailPage({ params }: PageProps) {
             <div>
               <h2 className="font-semibold mb-4 flex items-center gap-2">
                 网盘链接
-                <Badge variant="secondary">{sortedLinks.length} 个</Badge>
+                <Badge variant="secondary">{allLinks.length} 个</Badge>
               </h2>
 
-              {sortedLinks.length > 0 ? (
+              {allLinks.length > 0 ? (
                 <div className="space-y-3">
-                  {sortedLinks.map((link) => (
-                    <Card key={link.id} className="overflow-hidden">
+                  {allLinks.map((link, index) => (
+                    <Card key={link.id || `extracted-${index}`} className="overflow-hidden">
                       <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                           <a
@@ -196,7 +274,11 @@ export default async function ResourceDetailPage({ params }: PageProps) {
                 </div>
               ) : (
                 <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">暂无链接</p>
+                  <Link2 className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground mb-2">暂无链接</p>
+                  <p className="text-sm text-muted-foreground">
+                    可以去 <Link href="/community" className="text-primary hover:underline">社区</Link> 发布求资源帖
+                  </p>
                 </Card>
               )}
             </div>
