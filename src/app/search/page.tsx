@@ -44,8 +44,9 @@ async function searchResources(
 }
 
 export async function generateMetadata({ searchParams }: PageProps) {
-  const { q, keyword } = await searchParams
-  const searchQuery = q || keyword || ''
+  const params = await searchParams
+  const q = params?.q as string | undefined
+  const searchQuery = q || ''
   return {
     title: searchQuery ? `搜索: ${searchQuery} - 云盘资源站` : '搜索 - 云盘资源站',
   }
@@ -68,9 +69,12 @@ function SearchSkeleton() {
 }
 
 export default async function SearchPage({ searchParams }: PageProps) {
-  const { q, keyword, category, page } = await searchParams
+  const params = await searchParams
+  const q = params?.q as string | undefined
+  const category = params?.category as string | undefined
+  const page = params?.page as string | undefined
   const currentPage = parseInt(page || '1')
-  const searchQuery = q || keyword || ''
+  const searchQuery = q || ''
 
   if (!searchQuery) {
     return (

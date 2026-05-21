@@ -75,7 +75,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -83,8 +83,24 @@ export default function LoginPage() {
       if (error) throw error
 
       toast.success('登录成功')
-      router.push('/')
       router.refresh()
+
+      // 管理员跳转到管理后台，普通用户跳转到首页
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profile?.role === 'admin') {
+          router.push('/admin')
+        } else {
+          router.push('/')
+        }
+      } else {
+        router.push('/')
+      }
     } catch (error: any) {
       const errorMessage = error.message || ''
       if (errorMessage.includes('Invalid login credentials')) {

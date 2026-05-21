@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, ExternalLink, Eye, Clock, User, Link2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Clock, User, Link2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ResourceWithLinks, CATEGORY_NAMES, Category } from '@/types/database'
 import { PLATFORM_NAMES, PLATFORM_COLORS } from '@/lib/constants'
@@ -199,10 +199,6 @@ export default async function ResourceDetailPage({ params }: PageProps) {
             {/* Stats */}
             <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                {resource.view_count}
-              </div>
-              <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 {new Date(resource.created_at).toLocaleDateString('zh-CN')}
               </div>
@@ -248,7 +244,7 @@ export default async function ResourceDetailPage({ params }: PageProps) {
               {allLinks.length > 0 ? (
                 <div className="space-y-3">
                   {allLinks.map((link, index) => (
-                    <Card key={link.id || `extracted-${index}`} className="overflow-hidden">
+                    <Card key={index} className="overflow-hidden">
                       <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                           <a

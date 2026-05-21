@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Shield,
   ArrowLeft,
+  Image,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 
@@ -55,6 +56,11 @@ const navItems = [
     title: '数据导入',
     href: '/admin/import',
     icon: Database,
+  },
+  {
+    title: '封面管理',
+    href: '/admin/covers',
+    icon: Image,
   },
 ]
 

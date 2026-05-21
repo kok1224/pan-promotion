@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Card } from '@/components/ui/card'
-import { Film, BookOpen, Gamepad2, Eye, Copy, Check, ExternalLink } from 'lucide-react'
+import { Film, BookOpen, Gamepad2, Copy, Check, ExternalLink } from 'lucide-react'
 import { ResourceWithLinks } from '@/types/database'
 import { PLATFORM_NAMES } from '@/lib/constants'
 import { useState } from 'react'
@@ -133,7 +133,7 @@ export function ResourceCard({ resource, showCategory = true }: ResourceCardProp
               <div className="flex flex-wrap gap-1 mb-2">
                 {allLinks.slice(0, 2).map((link, index) => (
                   <a
-                    key={link.id || `ext-${index}`}
+                    key={index}
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -156,15 +156,7 @@ export function ResourceCard({ resource, showCategory = true }: ResourceCardProp
             )}
 
             {/* 操作栏 */}
-            <div className="flex items-center justify-between">
-              <Link
-                href={`/${resource.category}s/${resource.id}`}
-                className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-              >
-                <Eye className="h-3 w-3" />
-                {resource.view_count}
-              </Link>
-
+            <div className="flex items-center justify-end">
               {allLinks.length > 0 && (
                 <button
                   onClick={handleCopyAllLinks}
