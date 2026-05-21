@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+import_novels.sql
+import_data.json
+import_novels_batch.sql
