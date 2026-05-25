@@ -1,5 +1,5 @@
 import { Pool } from 'pg'
-import { Resource, Request, Profile } from '@/types/database'
+import type { Tag } from '@/types/database'
 
 const connectionString = process.env.DATABASE_URL!
 
@@ -13,6 +13,50 @@ export const pool = new Pool({
 export interface ResourcesResult {
   data: Resource[]
   total: number
+}
+
+export interface Resource {
+  id: string
+  title: string
+  category: string
+  description: string | null
+  cover_url: string | null
+  tags: string[]
+  status: string
+  view_count: number
+  uploader_id: string | null
+  created_at: string
+  updated_at: string
+  pan_links: PanLink[]
+}
+
+export interface PanLink {
+  id: string
+  resource_id?: string
+  platform: string
+  url: string
+  password: string | null
+  sort_order: number
+  created_at?: string
+}
+
+export interface Request {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  category: string
+  status: string
+  fulfilled_by: string | null
+  created_at: string
+  user?: {
+    id: string
+    username: string
+    avatar_url: string | null
+    role: 'user' | 'admin'
+    coin_balance: number
+    created_at: string
+  }
 }
 
 // 资源表查询
@@ -181,8 +225,6 @@ export async function getResource(id: string) {
   const result = await pool.query(sql, [id])
   return result.rows[0] || null
 }
-
-import { Tag } from '@/types/database'
 
 // 获取标签
 export async function getTags(category?: string): Promise<Tag[]> {

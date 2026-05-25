@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
-import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import * as XLSX from 'xlsx'
 
@@ -36,7 +36,7 @@ export default function ImportPage() {
   const [allData, setAllData] = useState<ImportRow[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const user = useAuthStore((state) => state.user)
+  const token = useAuthStore((state) => state.token)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -119,21 +119,24 @@ export default function ImportPage() {
 
     setImporting(true)
     setProgress(0)
+    setResult(null)
 
     try {
       const response = await fetch('/api/admin/import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: allData,
-          uploaderId: user?.id || null
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ data: allData })
       })
 
-      // Simulate progress (API doesn't stream progress)
+      // Animate indeterminate progress
+      let progressValue = 0
       const progressInterval = setInterval(() => {
-        setProgress((p) => Math.min(p + 10, 90))
-      }, 200)
+        progressValue = Math.min(progressValue + Math.random() * 15, 95)
+        setProgress(progressValue)
+      }, 300)
 
       const resultData = await response.json()
       clearInterval(progressInterval)
@@ -145,8 +148,9 @@ export default function ImportPage() {
       setProgress(100)
       setResult(resultData)
       toast.success(`导入完成：成功 ${resultData.success} 条，失败 ${resultData.failed} 条`)
-    } catch (error: any) {
-      toast.error(error.message || '导入失败')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '导入失败'
+      toast.error(message)
     } finally {
       setImporting(false)
     }
@@ -273,12 +277,15 @@ export default function ImportPage() {
             {importing && (
               <Card>
                 <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>导入进度</span>
-                      <span>{Math.round(progress)}%</span>
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>正在导入数据...</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} />
                     </div>
-                    <Progress value={progress} />
                   </div>
                 </CardContent>
               </Card>

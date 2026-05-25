@@ -4,7 +4,7 @@ export type Platform = 'quark' | 'baidu' | 'uc' | 'ali' | 'other'
 export type UserRole = 'user' | 'admin'
 export type RequestStatus = 'open' | 'fulfilled' | 'closed'
 
-export const CATEGORY_NAMES: Record<Category, string> = {
+export const CATEGORY_NAMES: Record<Category | string, string> = {
   movie: '影视',
   novel: '小说',
   game: '游戏',
@@ -19,12 +19,12 @@ export const CATEGORIES: Category[] = ['movie', 'novel', 'game', 'anime', 'softw
 
 export interface Resource {
   id: string
-  category: Category
+  category: Category | string
   title: string
   cover_url: string | null
   description: string | null
   tags: string[]
-  status: ResourceStatus
+  status: ResourceStatus | string
   uploader_id: string | null
   view_count: number
   download_count?: number
@@ -37,12 +37,12 @@ export interface Resource {
 
 export interface PanLink {
   id: string
-  resource_id: string
-  platform: Platform
+  resource_id?: string
+  platform: Platform | string
   url: string
   password: string | null
   sort_order: number
-  created_at: string
+  created_at?: string
   extraction_code?: string | null
   file_size?: string | null
 }
@@ -61,8 +61,8 @@ export interface Request {
   user_id: string
   title: string
   description: string | null
-  category: Category
-  status: RequestStatus
+  category: Category | string
+  status: RequestStatus | string
   fulfilled_by: string | null
   created_at: string
   user?: Profile

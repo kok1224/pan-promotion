@@ -292,13 +292,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-4 border-t border-[var(--border)]">
-        <div className="max-w-4xl mx-auto text-center text-sm text-[var(--muted-foreground)]">
-          <p>云盘资源站 - 聚合多平台网盘资源</p>
-        </div>
-      </footer>
     </div>
   )
 }

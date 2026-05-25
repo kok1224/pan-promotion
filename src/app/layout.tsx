@@ -18,7 +18,6 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "云盘资源站 - 聚合多平台网盘资源",
   description: "聚合夸克网盘、百度网盘、UC网盘等资源，支持影视、小说、游戏下载",
   keywords: ["网盘资源", "影视下载", "小说下载", "游戏下载", "夸克网盘", "百度网盘"],
   icons: {
@@ -39,7 +38,15 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <footer className="border-t py-6">
             <div className="container text-center text-sm text-muted-foreground">
-              <p>&copy; {new Date().getFullYear()} 云盘资源站. 仅供学习交流使用。</p>
+              <p>
+                &copy; {new Date().getFullYear()} 云盘资源站. 仅供学习交流使用。
+                <span className="mx-2">·</span>
+                <a href="/terms" className="hover:text-primary underline underline-offset-4">使用条款</a>
+                <span className="mx-2">·</span>
+                <a href="/privacy" className="hover:text-primary underline underline-offset-4">隐私政策</a>
+                <span className="mx-2">·</span>
+                <span>侵权投诉：kokfam168@gmail.com</span>
+              </p>
             </div>
           </footer>
         </Providers>

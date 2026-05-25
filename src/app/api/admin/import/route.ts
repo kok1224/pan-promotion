@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/neon'
+import { verifyToken, extractTokenFromHeader, getUserById } from '@/lib/auth'
 
 interface ImportRow {
   category: string
@@ -13,12 +14,29 @@ interface ImportRow {
 }
 
 export async function POST(request: NextRequest) {
+  // Verify admin role
+  const authHeader = request.headers.get('Authorization')
+  const token = extractTokenFromHeader(authHeader)
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const payload = verifyToken(token)
+  if (!payload) {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  }
+
+  const user = await getUserById(payload.userId)
+  if (!user || user.role !== 'admin') {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
-    const { data, uploaderId } = body as { data: ImportRow[], uploaderId: string | null }
+    const { data } = body as { data: ImportRow[] }
 
     if (!data || !Array.isArray(data)) {
-      return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
     }
 
     const errors: string[] = []
@@ -30,7 +48,10 @@ export async function POST(request: NextRequest) {
       const batch = data.slice(i, i + batchSize)
 
       for (const row of batch) {
+        const client = await pool.connect()
         try {
+          await client.query('BEGIN')
+
           const categoryMap: Record<string, string> = {
             movie: 'movie', movies: 'movie', 影视: 'movie',
             novel: 'novel', novels: 'novel', 小说: 'novel',
@@ -51,7 +72,7 @@ export async function POST(request: NextRequest) {
             : []
 
           // Insert resource
-          const resourceResult = await pool.query(
+          const resourceResult = await client.query(
             `INSERT INTO resources (category, title, cover_url, description, tags, status, uploader_id, view_count, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, 'approved', $6, 0, NOW(), NOW())
              RETURNING id`,
@@ -61,29 +82,32 @@ export async function POST(request: NextRequest) {
               row.cover_url || null,
               row.description || null,
               tags,
-              uploaderId,
+              user.id,
             ]
           )
 
           if (resourceResult.rows.length === 0) {
-            failed++
-            errors.push(`${row.title}: 插入资源失败`)
-            continue
+            throw new Error('Failed to insert resource')
           }
 
           const resourceId = resourceResult.rows[0].id
 
           // Insert pan_link
-          await pool.query(
+          await client.query(
             `INSERT INTO pan_links (resource_id, platform, url, password, sort_order)
              VALUES ($1, $2, $3, $4, 0)`,
             [resourceId, platform, row.url, row.password || null]
           )
 
+          await client.query('COMMIT')
           success++
-        } catch (err: any) {
+        } catch (err: unknown) {
+          await client.query('ROLLBACK')
           failed++
-          errors.push(`${row.title}: ${err.message}`)
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+          errors.push(`${row.title}: ${errorMessage}`)
+        } finally {
+          client.release()
         }
       }
     }

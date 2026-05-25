@@ -37,7 +37,19 @@
       "Bash(xargs kill -9)",
       "Bash(taskkill //F //PID 101504)",
       "Bash(npm ls *)",
-      "Bash(taskkill //F //PID 105516)"
+      "Bash(taskkill //F //PID 105516)",
+      "Read(//c/Users/Administrator/.claude/projects/E--pan-promotion/**)",
+      "Bash(gh pr *)",
+      "Bash(git *)",
+      "Bash(npx tsc *)",
+      "WebSearch",
+      "mcp__Chrome_DevTools_MCP__navigate_page",
+      "mcp__Chrome_DevTools_MCP__take_snapshot",
+      "mcp__Chrome_DevTools_MCP__list_network_requests"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "Chrome DevTools MCP"
+  ]
 }
