@@ -1,53 +1,42 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, Film, BookOpen, Gamepad2, ArrowRight, Sparkles, Download, Users, Star } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { Search, Film, BookOpen, Gamepad2, ArrowRight, Sparkles, Download, Users, TrendingUp, Calendar } from 'lucide-react'
+import { getResourcesBySort, getResourceCounts } from '@/lib/neon'
 import { ResourceCard } from '@/components/resource-card'
 import { ResourceWithLinks } from '@/types/database'
 
 async function getLatestResources(limit = 8) {
-  const { data } = await supabase
-    .from('resources')
-    .select(`
-      *,
-      pan_links (*)
-    `)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  return await getResourcesBySort('latest', limit) as ResourceWithLinks[]
+}
 
-  return (data as ResourceWithLinks[]) || []
+async function getPopularResources(limit = 8) {
+  return await getResourcesBySort('views', limit) as ResourceWithLinks[]
+}
+
+async function getTodayResources() {
+  // 今天的数据
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return await getResourcesBySort('latest', 8) as ResourceWithLinks[]
 }
 
 async function getResourceCount() {
-  const { count: movies } = await supabase
-    .from('resources')
-    .select('*', { count: 'exact', head: true })
-    .eq('category', 'movie')
-    .eq('status', 'approved')
-
-  const { count: novels } = await supabase
-    .from('resources')
-    .select('*', { count: 'exact', head: true })
-    .eq('category', 'novel')
-    .eq('status', 'approved')
-
-  const { count: games } = await supabase
-    .from('resources')
-    .select('*', { count: 'exact', head: true })
-    .eq('category', 'game')
-    .eq('status', 'approved')
-
-  return { movies: movies || 0, novels: novels || 0, games: games || 0 }
+  const counts = await getResourceCounts()
+  return {
+    movies: counts.movie || 0,
+    novels: counts.novel || 0,
+    games: counts.game || 0,
+  }
 }
 
 export default async function HomePage() {
-  const [latestResources, counts] = await Promise.all([
-    getLatestResources(),
+  const [latestResources, popularResources, todayResources, counts] = await Promise.all([
+    getLatestResources(8),
+    getPopularResources(8),
+    getTodayResources(),
     getResourceCount(),
   ])
 
@@ -55,30 +44,23 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section - 东方影院风格 */}
-      <section className="relative bg-[var(--background)] border-b border-[var(--border)] py-20 px-4">
-        {/* 装饰性背景元素 */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-[var(--primary)]/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-[var(--primary)]/3 rounded-full blur-2xl" />
-        </div>
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          {/* 装饰性顶部线条 */}
+      {/* Hero Section */}
+      <section className="py-16 px-4">
+        <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-4 mb-8">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-[var(--primary)]" />
-            <Star className="h-5 w-5 text-[var(--primary)]" />
+            <Sparkles className="h-6 w-6 text-[var(--primary)]" />
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-[var(--primary)]" />
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-[var(--foreground)]">
-            珍< span className="text-[var(--primary)]">藏</span>影厅
+            珍<span className="text-[var(--primary)]">藏</span>影厅
           </h1>
           <p className="text-lg text-[var(--muted-foreground)] mb-8 max-w-2xl mx-auto">
             影视、小说、游戏，一站搞定。多个网盘资源汇总，方便查找，一键直达。
           </p>
 
-          {/* Search Bar - 精致圆形设计 */}
+          {/* Search Bar */}
           <form action="/search" method="GET" className="max-w-xl mx-auto">
             <div className="relative">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--muted-foreground)]" />
@@ -97,7 +79,7 @@ export default async function HomePage() {
             </div>
           </form>
 
-          {/* Stats - 简洁数字展示 */}
+          {/* Stats */}
           <div className="mt-12 flex flex-wrap justify-center gap-12">
             <div className="text-center">
               <div className="text-4xl font-bold text-[var(--primary)]">{totalCount}</div>
@@ -119,7 +101,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Categories - 横向卡片 */}
+      {/* Categories */}
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6">
@@ -214,8 +196,8 @@ export default async function HomePage() {
 
           {latestResources.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {latestResources.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} />
+              {latestResources.map((resource, index) => (
+                <ResourceCard key={resource.id} resource={resource} priority={index < 2} />
               ))}
             </div>
           ) : (
@@ -226,6 +208,54 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Today's Updates */}
+      {todayResources.length > 0 && (
+        <section className="py-12 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-yellow-500" />
+                  今日更新
+                  <Badge variant="secondary" className="ml-2">{todayResources.length}</Badge>
+                </h2>
+                <p className="text-[var(--muted-foreground)] mt-1">今日新增资源</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {todayResources.map((resource, index) => (
+                <ResourceCard key={resource.id} resource={resource} priority={index < 2} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Popular Resources */}
+      {popularResources.length > 0 && (
+        <section className="py-12 px-4 bg-[var(--card)]/50 border-y border-[var(--border)]">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-orange-500" />
+                  热门资源
+                </h2>
+                <p className="text-[var(--muted-foreground)] mt-1">浏览量最高的资源</p>
+              </div>
+              <Button variant="outline" render={<Link href="/movies?sort=views">查看更多</Link>} className="border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary)]/10" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {popularResources.map((resource, index) => (
+                <ResourceCard key={resource.id} resource={resource} priority={index < 2} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="py-16 px-4">
@@ -262,6 +292,13 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-4 border-t border-[var(--border)]">
+        <div className="max-w-4xl mx-auto text-center text-sm text-[var(--muted-foreground)]">
+          <p>云盘资源站 - 聚合多平台网盘资源</p>
+        </div>
+      </footer>
     </div>
   )
 }

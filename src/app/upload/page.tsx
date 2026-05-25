@@ -24,7 +24,7 @@ interface PanLinkInput {
 
 export default function UploadPage() {
   const router = useRouter()
-  const { user, profile } = useAuthStore()
+  const { user } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<Category>('movie')
@@ -35,7 +35,7 @@ export default function UploadPage() {
     { platform: 'quark', url: '', password: '' },
   ])
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = user?.role === 'admin'
 
   if (!user) {
     return (

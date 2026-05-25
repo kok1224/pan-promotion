@@ -8,17 +8,22 @@ import { Providers } from "@/components/providers"
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 })
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 })
 
 export const metadata: Metadata = {
   title: "云盘资源站 - 聚合多平台网盘资源",
   description: "聚合夸克网盘、百度网盘、UC网盘等资源，支持影视、小说、游戏下载",
   keywords: ["网盘资源", "影视下载", "小说下载", "游戏下载", "夸克网盘", "百度网盘"],
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({

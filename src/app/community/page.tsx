@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { supabase } from '@/lib/supabase'
-import { Request, CATEGORY_NAMES, Category, CATEGORIES } from '@/types/database'
-import { MessageSquare, Plus, CheckCircle, Clock } from 'lucide-react'
+import { getRequests as fetchRequests } from '@/lib/neon'
+import { CATEGORY_NAMES, CATEGORIES, Request } from '@/types/database'
+import { MessageSquare, CheckCircle, Clock } from 'lucide-react'
 import { CreateRequestButton } from '@/components/create-request-button'
 import { AuthButton } from '@/components/auth-button'
 
@@ -13,40 +13,8 @@ interface PageProps {
   searchParams: Promise<{ category?: string; status?: string }>
 }
 
-const PAGE_SIZE = 20
-
-async function getRequests(category?: string, status?: string, page: number = 1) {
-  let query = supabase
-    .from('requests')
-    .select(`
-      *,
-      user:user_id (
-        id,
-        username,
-        avatar_url
-      )
-    `, { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-
-  if (category && CATEGORIES.includes(category as Category)) {
-    query = query.eq('category', category)
-  }
-
-  if (status === 'fulfilled') {
-    query = query.eq('status', 'fulfilled')
-  } else if (status === 'open') {
-    query = query.eq('status', 'open')
-  } else {
-    query = query.in('status', ['open', 'fulfilled'])
-  }
-
-  const { data, count } = await query
-
-  return {
-    data: (data as Request[]) || [],
-    total: count || 0,
-  }
+async function getRequests(category?: string, status?: string) {
+  return await fetchRequests({ category, status })
 }
 
 function RequestCard({ request }: { request: Request }) {
@@ -87,12 +55,14 @@ function RequestCard({ request }: { request: Request }) {
         </p>
         <div className="flex items-center justify-between">
           <Badge variant="outline">
-            {CATEGORY_NAMES[request.category]}
+            {CATEGORY_NAMES[request.category as keyof typeof CATEGORY_NAMES] || request.category}
           </Badge>
-          <Button variant="ghost" size="sm" render={<Link href={`/community/${request.id}`}>
+          <Link href={`/community/${request.id}`}>
+            <Button variant="ghost" size="sm">
               <MessageSquare className="h-4 w-4 mr-1" />
               查看详情
-            </Link>} />
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>
@@ -108,16 +78,13 @@ export async function generateMetadata() {
 
 export default async function CommunityPage({ searchParams }: PageProps) {
   const { category, status } = await searchParams
-  const currentPage = 1
-  const [requests] = await Promise.all([
-    getRequests(category, status, currentPage),
-  ])
+  const requests = await getRequests(category, status)
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="container">
+      <div className="container mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <MessageSquare className="h-6 w-6" />
@@ -134,19 +101,25 @@ export default async function CommunityPage({ searchParams }: PageProps) {
         {/* Filters */}
         <div className="mb-6">
           <Tabs defaultValue={status || 'all'} className="w-full">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
               <TabsList>
                 <TabsTrigger value="all">全部</TabsTrigger>
                 <TabsTrigger value="open">求助中</TabsTrigger>
                 <TabsTrigger value="fulfilled">已解决</TabsTrigger>
               </TabsList>
 
-              <div className="flex gap-2">
-                <Badge variant={!category ? 'default' : 'outline'} render={<Link href="/community">全部类型</Link>} />
+              <div className="flex flex-wrap gap-2">
+                <Link href="/community">
+                  <Badge variant={!category ? 'default' : 'outline'} className="cursor-pointer">
+                    全部类型
+                  </Badge>
+                </Link>
                 {CATEGORIES.map((cat) => (
-                  <Badge key={cat} variant={category === cat ? 'default' : 'outline'} render={<Link href={`/community?category=${cat}`}>
+                  <Link key={cat} href={`/community?category=${cat}`}>
+                    <Badge variant={category === cat ? 'default' : 'outline'} className="cursor-pointer">
                       {CATEGORY_NAMES[cat]}
-                    </Link>} />
+                    </Badge>
+                  </Link>
                 ))}
               </div>
             </div>

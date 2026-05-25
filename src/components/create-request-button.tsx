@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/auth'
 import { Category, CATEGORY_NAMES, CATEGORIES } from '@/types/database'
 
@@ -28,7 +27,7 @@ export function CreateRequestButton() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<Category>('movie')
+  const [category, setCategory] = useState<Category>('novel')
   const [description, setDescription] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,29 +47,32 @@ export function CreateRequestButton() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.from('requests').insert({
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        category,
+      const response = await fetch('/api/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim() || null,
+          category,
+        }),
       })
 
-      if (error) {
-        throw error
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '发布失败')
       }
 
       toast.success('发布成功！')
       setOpen(false)
       setTitle('')
       setDescription('')
-      setCategory('movie')
+      setCategory('novel')
       router.refresh()
     } catch (error: any) {
-      if (error.code === '42501') {
-        toast.error('权限不足，请刷新页面后重试')
-      } else {
-        toast.error(error.message || '发布失败')
-      }
+      toast.error(error.message || '发布失败')
     } finally {
       setLoading(false)
     }

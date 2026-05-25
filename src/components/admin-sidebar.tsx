@@ -66,9 +66,9 @@ const navItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname()
-  const { profile } = useAuthStore()
+  const { user } = useAuthStore()
 
-  if (profile?.role !== 'admin') {
+  if (user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

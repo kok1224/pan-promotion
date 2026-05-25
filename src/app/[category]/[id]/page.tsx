@@ -1,15 +1,15 @@
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, ExternalLink, Clock, User, Link2 } from 'lucide-react'
+import { ArrowLeft, Clock, User } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ResourceWithLinks, CATEGORY_NAMES, Category } from '@/types/database'
-import { PLATFORM_NAMES, PLATFORM_COLORS } from '@/lib/constants'
-import { ResourceComments } from '@/components/resource-comments'
+import { extractLinksFromDescription, cleanDescription } from '@/lib/utils'
+import { CopyAllButton } from '@/components/copy-all-button'
+import { ResourceLinks } from '@/components/resource-links'
 
 interface PageProps {
   params: Promise<{ category: string; id: string }>
@@ -19,106 +19,31 @@ const CATEGORY_MAP: Record<string, Category> = {
   movies: 'movie',
   novels: 'novel',
   games: 'game',
+  anime: 'anime',
+  software: 'software',
+  music: 'music',
+  ebook: 'ebook',
+  other: 'other',
 }
 
-// 从 description 中提取网盘链接
-interface ExtractedLink {
-  url: string
-  password?: string
-  platform: 'baidu' | 'quark' | 'ali' | 'uc' | 'other'
-}
-
-function extractLinksFromDescription(description: string | null): ExtractedLink[] {
-  if (!description) return []
-
-  const links: ExtractedLink[] = []
-  const patterns = [
-    // 百度网盘: https://pan.baidu.com/s/xxx?pwd=xxx 或 https://pan.baidu.com/share/init?surl=xxx&pwd=xxx
-    /https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=([a-zA-Z0-9]+))?/gi,
-    /https?:\/\/pan\.baidu\.com\/share\/init\?surl=[a-zA-Z0-9_-]+(?:\&pwd=([a-zA-Z0-9]+))?/gi,
-    // 夸克网盘
-    /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi,
-    // 阿里云盘
-    /https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi,
-    // UC网盘
-    /https?:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9_-]+/gi,
-  ]
-
-  const baiduPattern = /https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=([a-zA-Z0-9]+))?/gi
-  let match
-  while ((match = baiduPattern.exec(description)) !== null) {
-    links.push({
-      url: match[0],
-      password: match[1] || undefined,
-      platform: 'baidu',
-    })
-  }
-
-  const quarkPattern = /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi
-  while ((match = quarkPattern.exec(description)) !== null) {
-    links.push({
-      url: match[0],
-      platform: 'quark',
-    })
-  }
-
-  const aliPattern = /https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi
-  while ((match = aliPattern.exec(description)) !== null) {
-    links.push({
-      url: match[0],
-      platform: 'ali',
-    })
-  }
-
-  return links
-}
-
-// 清理 description 中的网盘链接
-function cleanDescription(description: string | null): string | null {
-  if (!description) return null
-
-  // 移除网盘链接，保留其他内容
-  let cleaned = description
-    .replace(/https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+(?:\?pwd=[a-zA-Z0-9]+)?/gi, '')
-    .replace(/https?:\/\/pan\.baidu\.com\/share\/init\?surl=[a-zA-Z0-9_-]+(?:\&pwd=[a-zA-Z0-9]+)?/gi, '')
-    .replace(/https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_-]+/gi, '')
-    .replace(/https?:\/\/www\.aliyundrive\.com\/s\/[a-zA-Z0-9_-]+/gi, '')
-    .replace(/https?:\/\/drive\.uc\.cn\/s\/[a-zA-Z0-9_-]+/gi, '')
-    .trim()
-
-  // 移除多余的空行
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
-
-  return cleaned || null
-}
-
-async function getResource(category: string, id: string): Promise<ResourceWithLinks | null> {
+const getResource = cache(async (category: string, id: string): Promise<ResourceWithLinks | null> => {
   const cat = CATEGORY_MAP[category]
   if (!cat) return null
 
-  try {
-    const { data, error } = await supabase
-      .from('resources')
-      .select(`
-        *,
-        pan_links (*)
-      `)
-      .eq('id', id)
-      .eq('category', cat)
-      .eq('status', 'approved')
-      .single()
+  const { data, error } = await supabase
+    .from('resources')
+    .select('*, pan_links(*), uploader:uploader_id (id, username)')
+    .eq('id', id)
+    .eq('category', cat)
+    .eq('status', 'approved')
+    .single()
 
-    if (error || !data) {
-      console.error('Resource query error:', error)
-      return null
-    }
-
-    return data as ResourceWithLinks | null
-  } catch (err) {
-    console.error('Resource query exception:', err)
+  if (error || !data) {
     return null
   }
-}
+
+  return data as ResourceWithLinks
+})
 
 async function incrementViewCount(id: string) {
   await supabase.rpc('increment_view_count', { resource_id: id })
@@ -151,17 +76,12 @@ export default async function ResourceDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  // 增加浏览量
   incrementViewCount(id)
 
   const categoryName = CATEGORY_NAMES[resource.category]
-  const sortedLinks = resource.pan_links?.sort((a, b) => a.sort_order - b.sort_order) || []
-
-  // 从 description 中提取网盘链接
+  const sortedLinks = resource.pan_links?.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) || []
   const extractedLinks = extractLinksFromDescription(resource.description)
-  // 合并数据库链接和从 description 提取的链接
   const allLinks = [...sortedLinks, ...extractedLinks]
-  // 清理 description（移除已提取的链接）
   const cleanedDescription = cleanDescription(resource.description)
 
   return (
@@ -236,47 +156,17 @@ export default async function ResourceDetailPage({ params }: PageProps) {
 
             {/* Pan Links */}
             <div>
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                网盘链接
-                <Badge variant="secondary">{allLinks.length} 个</Badge>
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold flex items-center gap-2">
+                  网盘链接
+                  <Badge variant="secondary">{allLinks.length} 个</Badge>
+                </h2>
+                {allLinks.length > 0 && (
+                  <CopyAllButton links={allLinks} variant="outline" size="sm" />
+                )}
+              </div>
 
-              {allLinks.length > 0 ? (
-                <div className="space-y-3">
-                  {allLinks.map((link, index) => (
-                    <Card key={index} className="overflow-hidden">
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-white text-sm font-medium ${PLATFORM_COLORS[link.platform]} hover:opacity-90`}
-                          >
-                            {PLATFORM_NAMES[link.platform]}
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {link.password && (
-                            <Badge variant="outline" className="font-mono">
-                              提取码: {link.password}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <Card className="p-8 text-center">
-                  <Link2 className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground mb-2">暂无链接</p>
-                  <p className="text-sm text-muted-foreground">
-                    可以去 <Link href="/community" className="text-primary hover:underline">社区</Link> 发布求资源帖
-                  </p>
-                </Card>
-              )}
+              <ResourceLinks links={allLinks} />
             </div>
 
             {/* Uploader Info */}
@@ -301,9 +191,6 @@ export default async function ResourceDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-
-        {/* Comments Section */}
-        <ResourceComments resourceId={id} />
       </div>
     </div>
   )

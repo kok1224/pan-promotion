@@ -1,25 +1,23 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { AdminSidebar } from '@/components/admin-sidebar'
+import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAuthStore } from '@/store/auth'
 import * as XLSX from 'xlsx'
 
 interface ImportRow {
   category: string
   title: string
+  url: string
   cover_url?: string
   description?: string
   tags?: string
   platform: string
-  url: string
   password?: string
 }
 
@@ -30,13 +28,15 @@ interface ImportResult {
 }
 
 export default function ImportPage() {
-  const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [previewData, setPreviewData] = useState<ImportRow[]>([])
   const [fileName, setFileName] = useState('')
+  const [allData, setAllData] = useState<ImportRow[]>([])
+
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const user = useAuthStore((state) => state.user)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -54,9 +54,9 @@ export default function ImportPage() {
         const worksheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json<ImportRow>(worksheet)
 
-        // 验证数据格式
         const validData = jsonData.filter((row) => row.title && row.url && row.platform)
-        setPreviewData(validData.slice(0, 10)) // 只预览前10条
+        setAllData(validData)
+        setPreviewData(validData.slice(0, 100))
 
         if (validData.length === 0) {
           toast.error('文件中没有找到有效数据')
@@ -64,7 +64,7 @@ export default function ImportPage() {
         }
 
         toast.success(`成功解析 ${validData.length} 条数据`)
-      } catch (error) {
+      } catch (err) {
         toast.error('文件解析失败')
       }
     }
@@ -112,7 +112,7 @@ export default function ImportPage() {
   }
 
   const handleImport = async () => {
-    if (previewData.length === 0) {
+    if (allData.length === 0) {
       toast.error('没有可导入的数据')
       return
     }
@@ -120,101 +120,31 @@ export default function ImportPage() {
     setImporting(true)
     setProgress(0)
 
-    let success = 0
-    let failed = 0
-    const errors: string[] = []
-    const batchSize = 100
-
     try {
-      // 分批导入
-      for (let i = 0; i < previewData.length; i += batchSize) {
-        const batch = previewData.slice(i, i + batchSize)
+      const response = await fetch('/api/admin/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: allData,
+          uploaderId: user?.id || null
+        })
+      })
 
-        for (const row of batch) {
-          try {
-            // 转换分类
-            const categoryMap: Record<string, string> = {
-              movie: 'movie',
-              movies: 'movie',
-              影视: 'movie',
-              novel: 'novel',
-              novels: 'novel',
-              小说: 'novel',
-              game: 'game',
-              games: 'game',
-              游戏: 'game',
-            }
-            const category = categoryMap[row.category?.toLowerCase()] || 'movie'
+      // Simulate progress (API doesn't stream progress)
+      const progressInterval = setInterval(() => {
+        setProgress((p) => Math.min(p + 10, 90))
+      }, 200)
 
-            // 转换平台
-            const platformMap: Record<string, string> = {
-              quark: 'quark',
-              夸克: 'quark',
-              baidu: 'baidu',
-              百度: 'baidu',
-              uc: 'uc',
-              阿里: 'ali',
-              ali: 'ali',
-              aliyun: 'ali',
-              other: 'other',
-              其他: 'other',
-            }
-            const platform = platformMap[row.platform?.toLowerCase()] || 'other'
+      const resultData = await response.json()
+      clearInterval(progressInterval)
 
-            // 解析标签
-            const tags = row.tags
-              ? row.tags
-                  .split(/[,，]/)
-                  .map((t) => t.trim())
-                  .filter(Boolean)
-              : []
-
-            // 创建资源
-            const { data: resource, error: resourceError } = await supabase
-              .from('resources')
-              .insert({
-                category: category as any,
-                title: row.title,
-                cover_url: row.cover_url || null,
-                description: row.description || null,
-                tags,
-                status: 'approved',
-                uploader_id: (await supabase.auth.getUser()).data.user?.id || null,
-              })
-              .select()
-              .single()
-
-            if (resourceError) {
-              failed++
-              errors.push(`${row.title}: ${resourceError.message}`)
-              continue
-            }
-
-            // 创建网盘链接
-            const { error: linkError } = await supabase.from('pan_links').insert({
-              resource_id: resource.id,
-              platform: platform as any,
-              url: row.url,
-              password: row.password || null,
-            })
-
-            if (linkError) {
-              failed++
-              errors.push(`${row.title} (链接): ${linkError.message}`)
-            } else {
-              success++
-            }
-          } catch (err: any) {
-            failed++
-            errors.push(`${row.title}: ${err.message}`)
-          }
-        }
-
-        setProgress(Math.min(((i + batchSize) / previewData.length) * 100, 100))
+      if (!response.ok) {
+        throw new Error(resultData.error || '导入失败')
       }
 
-      setResult({ success, failed, errors: errors.slice(0, 50) }) // 最多显示50个错误
-      toast.success(`导入完成：成功 ${success} 条，失败 ${failed} 条`)
+      setProgress(100)
+      setResult(resultData)
+      toast.success(`导入完成：成功 ${resultData.success} 条，失败 ${resultData.failed} 条`)
     } catch (error: any) {
       toast.error(error.message || '导入失败')
     } finally {
@@ -224,8 +154,6 @@ export default function ImportPage() {
 
   return (
     <div className="flex min-h-screen">
-      <AdminSidebar />
-
       <div className="flex-1 md:ml-64 p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold mb-6">数据导入</h1>
@@ -300,11 +228,11 @@ export default function ImportPage() {
                 {previewData.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-medium mb-2">
-                      预览（前 10 条，共 {previewData.length} 条）：
+                      预览（共 {allData.length} 条）：
                     </p>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-hidden max-h-80 overflow-y-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-muted">
+                        <thead className="bg-muted sticky top-0">
                           <tr>
                             <th className="px-3 py-2 text-left">分类</th>
                             <th className="px-3 py-2 text-left">标题</th>
@@ -327,14 +255,14 @@ export default function ImportPage() {
                   </div>
                 )}
 
-                {previewData.length > 0 && (
+                {allData.length > 0 && (
                   <div className="mt-6">
                     <Button
                       size="lg"
                       onClick={handleImport}
                       disabled={importing}
                     >
-                      {importing ? '导入中...' : `开始导入 (${previewData.length} 条)`}
+                      {importing ? '导入中...' : `开始导入 (${allData.length} 条)`}
                     </Button>
                   </div>
                 )}

@@ -16,4 +16,4 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
   other: 'bg-gray-500',
 }
 
-export const PAGE_SIZE = 20
+export const PAGE_SIZE = 24

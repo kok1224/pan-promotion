@@ -1,105 +1,178 @@
 # 注册登录功能说明
 
 ## 功能概述
-云盘资源站使用 Supabase Auth 实现用户注册和登录功能。
+
+云盘资源站使用 **Neon 自定义认证** 实现用户注册和登录功能，已从 Supabase Auth 迁移。
+
+### 技术架构
+
+| 组件 | 技术 |
+|------|------|
+| 认证方式 | JWT Token |
+| 密码加密 | bcryptjs |
+| 用户存储 | Neon PostgreSQL (users 表) |
+| 状态管理 | Zustand + localStorage persistence |
+
+### 数据库表
+
+- `users` 表：存储用户信息（id, username, email, password_hash, role, avatar_url, created_at）
+- `auth_tokens` 表：存储 JWT refresh tokens（可选）
 
 ## 邮箱验证规则
+
 - 必须包含 `@` 符号
-- 必须以 `.com` 结尾
+- 支持常见域名：.com, .cn, .net, .org, .io, .co, .me, .tv, .cc, .biz
 - 示例：`user@example.com`
 
 ## 注册流程
+
 1. 用户填写用户名、邮箱、密码、确认密码
 2. 前端验证：
    - 用户名：2-20字符，支持中文、字母、数字和下划线
-   - 邮箱：必须包含 `@` 和以 `.com` 结尾
+   - 邮箱：必须包含 `@` 和有效域名
    - 密码：至少6位，建议8位以上
    - 确认密码：必须与密码一致
 3. 勾选同意服务条款和隐私政策
-4. 提交后发送验证邮件
-5. 用户验证邮箱后登录
+4. 调用 `/api/auth/register` 接口
+5. 注册成功自动登录，跳转首页
 
 ## 登录流程
+
 1. 用户填写邮箱和密码
 2. 前端验证邮箱格式
-3. 提交认证请求
-4. 成功则跳转到首页
+3. 调用 `/api/auth/login` 接口验证凭证
+4. 成功返回 JWT token，自动设置登录状态
+5. 管理员跳转到管理后台，普通用户跳转到首页
 
-## 数据库配置
+## API 接口
 
-### profiles 表 RLS 策略
-注册时需要自动创建用户资料，profiles 表需要以下配置：
+### 登录 `/api/auth/login`
 
-```sql
--- 授予 INSERT 权限
-GRANT INSERT ON profiles TO anon;
-GRANT INSERT ON profiles TO authenticated;
-GRANT INSERT ON profiles TO service_role;
-
--- 启用 RLS
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
--- 创建 INSERT 策略
-CREATE POLICY "Allow insert for auth"
-ON profiles FOR INSERT
-WITH CHECK (true);
+```typescript
+// POST /api/auth/login
+// Request: { email: string, password: string }
+// Response: { token: string, user: User }
 ```
 
-### 触发器配置
-```sql
--- 创建触发器函数
-CREATE OR REPLACE FUNCTION public.handle_new_user_v2()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_username TEXT;
-BEGIN
-  v_username := COALESCE(
-    NEW.raw_user_meta_data->>'username',
-    split_part(NEW.email, '@', 1)
-  );
+### 注册 `/api/auth/register`
 
-  INSERT INTO public.profiles (id, username)
-  VALUES (NEW.id, v_username)
-  ON CONFLICT (id) DO NOTHING;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth;
-
--- 创建触发器
-CREATE TRIGGER on_auth_user_created_v2
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user_v2();
+```typescript
+// POST /api/auth/register
+// Request: { username: string, email: string, password: string }
+// Response: { token: string, user: User }
 ```
 
-## 常见错误及解决方案
+### 会话验证 `/api/auth/session`
 
-### 1. "Database error saving new user"
-**原因**：profiles 表 RLS 策略未允许 INSERT 操作
-
-**解决**：
-```sql
-GRANT INSERT ON profiles TO anon, authenticated, service_role;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow insert for auth" ON profiles FOR INSERT WITH CHECK (true);
+```typescript
+// GET /api/auth/session
+// Headers: Authorization: Bearer <token>
+// Response: { user: User | null }
 ```
 
-### 2. 触发器执行失败
-**原因**：触发器函数缺少必要的权限或 search_path 配置错误
+### 退出 `/api/auth/logout`
 
-**解决**：使用 SECURITY DEFINER 并设置正确的 search_path：
-```sql
-CREATE FUNCTION ... SECURITY DEFINER SET search_path = auth;
+```typescript
+// POST /api/auth/logout
+// Response: { success: true }
+// Note: 客户端清除 token 即可，服务端无需处理
 ```
 
-### 3. Supabase CLI 内存溢出
-**原因**：Windows 下执行复杂查询时可能内存不足
+## User 类型
 
-**解决**：使用 `--file` 参数执行 SQL 文件，或直接在 Supabase SQL Editor 中执行
+```typescript
+interface User {
+  id: string
+  username: string
+  email: string
+  role: 'admin' | 'user'
+  avatar_url: string | null
+}
+```
+
+## 前端状态管理
+
+`src/store/auth.ts` 使用 Zustand 管理认证状态：
+
+```typescript
+interface AuthState {
+  user: User | null
+  token: string | null
+  loading: boolean
+  setAuth: (user: User, token: string) => void
+  logout: () => void
+  initialize: () => Promise<void>
+}
+```
+
+- `token` 通过 localStorage 持久化存储
+- `initialize()` 在页面加载时验证 token 有效性
+- `logout()` 清除本地存储的 token
+
+## 密码加密
+
+使用 bcryptjs 进行密码哈希：
+
+```typescript
+import bcrypt from 'bcryptjs'
+
+// 密码哈希
+const hash = await bcrypt.hash(password, 10)
+
+// 密码验证
+const isValid = await bcrypt.compare(password, hash)
+```
+
+## JWT Token
+
+使用 jsonwebtoken 生成和验证 Token：
+
+```typescript
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
+const JWT_EXPIRES_IN = '7d'
+
+// 生成 Token
+const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+
+// 验证 Token
+const payload = jwt.verify(token, JWT_SECRET) as { userId: string }
+```
+
+## 环境变量
+
+```env
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+JWT_SECRET=your-secret-key-min-32-chars
+```
 
 ## 相关文件
-- 登录页面：`src/app/login/page.tsx`
-- Supabase 客户端：`src/lib/supabase.ts`
-- 用户状态管理：`src/store/auth.ts`
-- 数据库初始化：`supabase/schema.sql`
+
+| 文件 | 说明 |
+|------|------|
+| `src/lib/auth.ts` | JWT 和密码工具函数 |
+| `src/app/api/auth/login/route.ts` | 登录接口 |
+| `src/app/api/auth/register/route.ts` | 注册接口 |
+| `src/app/api/auth/session/route.ts` | 会话验证接口 |
+| `src/app/api/auth/logout/route.ts` | 退出接口 |
+| `src/store/auth.ts` | Zustand 认证状态管理 |
+| `src/components/auth-button.tsx` | 认证按钮组件 |
+| `src/components/providers.tsx` | 全局 Provider（含 initialize） |
+| `src/app/login/page.tsx` | 登录注册页面 |
+
+## 常见问题
+
+### 1. 登录失败 "邮箱或密码错误"
+
+**检查**：
+- 确认邮箱已注册
+- 确认密码正确（区分大小写）
+
+### 2. Token 失效
+
+Token 有效期为 7 天，过期后需要重新登录。`initialize()` 会自动处理 token 验证。
+
+### 3. 权限不足
+
+只有 `role: 'admin'` 的用户才能访问管理后台。

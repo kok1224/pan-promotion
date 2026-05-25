@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx skills *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -X GET 'https://api.themoviedb.org/3/search/movie?query=流浪地球&language=zh-CN&include_adult=false' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxODgxOTc3NWJhYWQxYjkwNmIzY2EwN2NiZjhiZGQ3YSIsIm5iZiI6MTc3OTE4ODc3Ny4wOTksInN1YiI6IjZhMGM0NDI5OTE5NTM0NjY1YjQ2NzBkYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Fj2HBqvxh4zDXX2OXEmHkERy-gStmCfJ4xPXHJNZWMk' -H 'accept: application/json')",
+      "Bash(curl -v -X GET 'https://api.themoviedb.org/3/search/movie?query=%E6%B5%81%E6%B5%AA%E5%9C%B0%E7%90%83&language=zh-CN' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxODgxOTc3NWJhYWQxYjkwNmIzY2EwN2NiZjhiZGQ3YSIsIm5iZiI6MTc3OTE4ODc3Ny4wOTksInN1YiI6IjZhMGM0NDI5OTE5NTM0NjY1YjQ2NzBkYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Fj2HBqvxh4zDXX2OXEmHkERy-gStmCfJ4xPXHJNZWMk')",
+      "Bash(ping -n 2 api.themoviedb.org)",
+      "Bash(python -c ' *)",
+      "Read(//d/e/**)",
+      "Bash(python import_novels.py)",
+      "Bash(python \"e:/pan-promotion/import_novels.py\")",
+      "Bash(ping -n 3 github.com)",
+      "Bash(npm install *)",
+      "Bash(curl -s -X GET 'https://uwznipyxlkxguxlfozmg.supabase.co/rest/v1/resources?select=id,category,title&eq.status=approved&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k')",
+      "Bash(curl -s 'https://uwznipyxlkxguxlfozmg.supabase.co/rest/v1/resources?select=id,category,title&status=eq.approved&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k')",
+      "Bash(curl -s \"https://uwznipyxlkxguxlfozmg.supabase.co/rest/v1/?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s 'https://uwznipyxlkxguxlfozmg.supabase.co/rest/v1/requests?select=id,title,category&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k')",
+      "Skill(frontend-design)",
+      "Bash(start *)",
+      "Bash(npx supabase *)",
+      "Bash(curl -s -X POST 'https://uwznipyxlkxguxlfozmg.supabase.co/rest/v1/resources?category=eq.novel&select=id,title,status,created_at' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3em5pcHl4bGt4Z3V4bGZvem1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzgyMjksImV4cCI6MjA5NDcxNDIyOX0.Wy7nbwk94RDPsBfcUZ74jhr3V6EykYxmZSSeNQJdO8k' -H 'Range: 0-9')",
+      "Bash(curl *)",
+      "WebFetch(domain:console.neon.tech)",
+      "Bash(npm audit *)",
+      "Bash(node *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(taskkill /PID 74268 /F)",
+      "Bash(taskkill /IM node.exe /F)",
+      "Bash(cmd *)",
+      "Bash(echo \"\")",
+      "Bash(echo \"# JWT Secret for auth\")",
+      "Bash(echo \"JWT_SECRET=your-super-secret-jwt-key-change-in-production\")",
+      "Bash(taskkill //F //PID 93104)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Bash(taskkill //F //PID 101504)",
+      "Bash(npm ls *)",
+      "Bash(taskkill //F //PID 105516)"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-export type Category = 'movie' | 'novel' | 'game'
+export type Category = 'movie' | 'novel' | 'game' | 'anime' | 'software' | 'music' | 'ebook' | 'other'
 export type ResourceStatus = 'pending' | 'approved' | 'rejected'
 export type Platform = 'quark' | 'baidu' | 'uc' | 'ali' | 'other'
 export type UserRole = 'user' | 'admin'
@@ -8,9 +8,14 @@ export const CATEGORY_NAMES: Record<Category, string> = {
   movie: '影视',
   novel: '小说',
   game: '游戏',
+  anime: '动漫',
+  software: '软件',
+  music: '音乐',
+  ebook: '电子书',
+  other: '其他',
 }
 
-export const CATEGORIES: Category[] = ['movie', 'novel', 'game']
+export const CATEGORIES: Category[] = ['movie', 'novel', 'game', 'anime', 'software', 'music', 'ebook', 'other']
 
 export interface Resource {
   id: string
@@ -22,9 +27,11 @@ export interface Resource {
   status: ResourceStatus
   uploader_id: string | null
   view_count: number
+  download_count?: number
+  rating?: number | null
   created_at: string
   updated_at: string
-  pan_links?: PanLink[]
+  pan_links: PanLink[]
   uploader?: Profile
 }
 
@@ -36,6 +43,8 @@ export interface PanLink {
   password: string | null
   sort_order: number
   created_at: string
+  extraction_code?: string | null
+  file_size?: string | null
 }
 
 export interface Profile {
@@ -65,6 +74,12 @@ export interface Tag {
   name: string
   category: Category | null
   use_count: number
+}
+
+export interface ExtractedLink {
+  url: string
+  password?: string
+  platform: Platform
 }
 
 export interface Database {

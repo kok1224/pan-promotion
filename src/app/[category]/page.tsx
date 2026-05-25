@@ -2,116 +2,96 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResourceCard } from '@/components/resource-card'
-import { ResourceWithLinks } from '@/types/database'
-import { supabase } from '@/lib/supabase'
-import { Category, CATEGORY_NAMES } from '@/types/database'
-import { Film, BookOpen, Gamepad2 } from 'lucide-react'
+import { ResourceWithLinks, Category, CATEGORY_NAMES, Tag } from '@/types/database'
+import { getResources, getTags as fetchTags } from '@/lib/neon'
+import { Film, BookOpen, Gamepad2, Clock, Eye, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CategorySearch } from '@/components/category-search'
+import Link from 'next/link'
+import { PAGE_SIZE } from '@/lib/constants'
 
 interface PageProps {
   params: Promise<{ category: string }>
-  searchParams: Promise<{ page?: string; tag?: string; keyword?: string }>
+  searchParams: Promise<{ page?: string; tag?: string; keyword?: string; sort?: string }>
 }
 
-const CATEGORY_MAP: Record<string, Category> = {
+type SortOption = 'latest' | 'views' | 'title'
+
+const CATEGORY_MAP: Record<string, string> = {
   movies: 'movie',
   novels: 'novel',
-  games: 'game',
+  games: 'novel',
+  anime: 'anime',
+  software: 'software',
+  music: 'music',
+  ebook: 'ebook',
+  other: 'other',
 }
 
-const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   movie: <Film className="h-5 w-5" />,
   novel: <BookOpen className="h-5 w-5" />,
   game: <Gamepad2 className="h-5 w-5" />,
 }
 
-const CATEGORY_COLORS: Record<Category, string> = {
+const CATEGORY_COLORS: Record<string, string> = {
   movie: 'from-blue-500 to-blue-600',
   novel: 'from-green-500 to-green-600',
   game: 'from-purple-500 to-purple-600',
 }
 
-const PAGE_SIZE = 20
+const SORT_OPTIONS: { value: SortOption; label: string; icon: React.ReactNode }[] = [
+  { value: 'latest', label: '最新上架', icon: <Clock className="h-4 w-4" /> },
+  { value: 'views', label: '最多浏览', icon: <Eye className="h-4 w-4" /> },
+  { value: 'title', label: '标题排序', icon: <Star className="h-4 w-4" /> },
+]
 
-async function getResources(category: Category, page: number, tag?: string, keyword?: string) {
-  let query = supabase
-    .from('resources')
-    .select(`
-      *,
-      pan_links (*)
-    `, { count: 'exact' })
-    .eq('category', category)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-
-  if (tag) {
-    query = query.contains('tags', [tag])
-  }
-
-  if (keyword) {
-    query = query.ilike('title', `%${keyword}%`)
-  }
-
-  const { data, count } = await query
-
-  return {
-    data: (data as ResourceWithLinks[]) || [],
-    total: count || 0,
-  }
-}
-
-async function getTags(category: Category) {
-  const { data } = await supabase
-    .from('tags')
-    .select('*')
-    .eq('category', category)
-    .order('use_count', { ascending: false })
-    .limit(20)
-
-  return data || []
-}
-
-function ResourceListSkeleton() {
+function LoadingSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-      {Array.from({ length: 12 }).map((_, i) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i} className="overflow-hidden">
-          <Skeleton className="aspect-[3/4]" />
-          <div className="p-3 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
+          <Skeleton className="h-48 w-full" />
+          <CardHeader>
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4 mt-2" />
+          </CardContent>
         </Card>
       ))}
     </div>
   )
 }
 
-export async function generateMetadata({ params }: PageProps) {
-  const { category } = await params
-  const cat = CATEGORY_MAP[category] || 'movie'
-  const name = CATEGORY_NAMES[cat]
-
-  return {
-    title: `${name}资源列表 - 云盘资源站`,
-    description: `浏览${name}资源，聚合夸克、百度、UC等多个网盘资源`,
-  }
-}
-
 export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { category } = await params
-  const { page, tag, keyword } = await searchParams
+  const { page, tag, keyword, sort } = await searchParams
 
-  const cat = CATEGORY_MAP[category] || 'movie'
-  const currentPage = parseInt(page || '1')
+  const cat = (CATEGORY_MAP[category] || 'novel') as Category
+  const currentPage = parseInt(page || '1', 10)
+  const currentSort = (sort as SortOption) || 'latest'
+
   const [resources, tags] = await Promise.all([
-    getResources(cat, currentPage, tag, keyword),
-    getTags(cat),
+    getResources({ category: cat, page: currentPage, tag, keyword, sort: currentSort }),
+    fetchTags(cat),
   ])
 
   const totalPages = Math.ceil(resources.total / PAGE_SIZE)
+  const categoryName = CATEGORY_NAMES[cat] || category
+  const categoryIcon = CATEGORY_ICONS[cat] || <Film className="h-5 w-5" />
+  const categoryColor = CATEGORY_COLORS[cat] || 'from-gray-500 to-gray-600'
+
+  const buildUrl = (params: Record<string, string | undefined>) => {
+    const query = new URLSearchParams()
+    if (params.page) query.set('page', params.page)
+    if (params.tag) query.set('tag', params.tag)
+    if (params.keyword) query.set('keyword', params.keyword)
+    if (params.sort && params.sort !== 'latest') query.set('sort', params.sort)
+    return `/${category}${query.toString() ? '?' + query.toString() : ''}`
+  }
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -119,11 +99,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         {/* Header */}
         <div className={`bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 mb-6`}>
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-[var(--primary)]/10">
-              {CATEGORY_ICONS[cat]}
+            <div className={`p-3 rounded-xl bg-gradient-to-r ${categoryColor}`}>
+              <div className="text-white">
+                {categoryIcon}
+              </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[var(--foreground)]">{CATEGORY_NAMES[cat]}资源</h1>
+              <h1 className="text-2xl font-bold text-[var(--foreground)]">{categoryName}资源</h1>
               <p className="text-[var(--muted-foreground)] text-sm mt-1">
                 共 {resources.total.toLocaleString()} 个资源
                 {tag && <span> · 标签：{tag}</span>}
@@ -133,40 +115,62 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           </div>
         </div>
 
-        {/* Search */}
-        <CategorySearch category={category} currentSearch={keyword} />
+        {/* Search & Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <CategorySearch category={category} currentSearch={keyword || ''} />
+          </CardContent>
+        </Card>
+
+        {/* Sort Options */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {SORT_OPTIONS.map((option) => (
+              <Link
+                key={option.value}
+                href={buildUrl({ sort: option.value, page: '1', tag, keyword })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  currentSort === option.value
+                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                    : 'bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]'
+                }`}
+              >
+                {option.icon}
+                {option.label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
         {/* Tags Filter */}
         {tags.length > 0 && (
-          <div className="mb-6">
-            <div className="flex flex-wrap gap-2">
-              {tag && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {tag && (
+              <Link href={`/${category}`}>
+                <Badge variant="secondary" className="cursor-pointer">
+                  清除筛选
+                </Badge>
+              </Link>
+            )}
+            {tags.map((t) => (
+              <Link key={t.id} href={`/${category}?tag=${encodeURIComponent(t.name)}`}>
                 <Badge
-                  variant="secondary"
-                  className="cursor-pointer"
-                  render={<a href={`/${category}`}>清除筛选</a>}
-                />
-              )}
-              {tags.map((t) => (
-                <Badge
-                  key={t.id}
                   variant={tag === t.name ? 'default' : 'outline'}
                   className="cursor-pointer"
                 >
-                  <a href={`/${category}?tag=${encodeURIComponent(t.name)}`}>
-                    {t.name} ({t.use_count})
-                  </a>
+                  {t.name}
+                  <span className="ml-1 text-xs opacity-70">({t.use_count})</span>
                 </Badge>
-              ))}
-            </div>
+              </Link>
+            ))}
           </div>
         )}
 
-        {/* Resource List */}
-        <Suspense fallback={<ResourceListSkeleton />}>
+        {/* Resources Grid */}
+        <Suspense fallback={<LoadingSkeleton />}>
           {resources.data.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {resources.data.map((resource) => (
                   <ResourceCard key={resource.id} resource={resource} showCategory={false} />
                 ))}
@@ -174,44 +178,54 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-8">
+                <div className="flex items-center justify-center gap-2">
                   {currentPage > 1 && (
-                    <a
-                      href={`/${category}?page=${currentPage - 1}${tag ? `&tag=${tag}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`}
-                      className="px-4 py-2 border rounded-md hover:bg-gray-50"
-                    >
-                      上一页
-                    </a>
+                    <Link href={buildUrl({ page: (currentPage - 1).toString() })}>
+                      <Badge variant="outline" className="cursor-pointer px-4 py-2">
+                        上一页
+                      </Badge>
+                    </Link>
                   )}
-                  {(() => {
-                    const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
-                    const pages = Array.from({ length: Math.min(5, totalPages) }, (_, i) => start + i)
-                    return pages.map((pageNum) => (
-                      <a
-                        key={pageNum}
-                        href={`/${category}?page=${pageNum}${tag ? `&tag=${tag}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`}
-                        className={`px-4 py-2 border rounded-md ${
-                          pageNum === currentPage ? 'bg-primary text-white' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNum}
-                      </a>
-                    ))
-                  })()}
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+
+                      return (
+                        <Link key={pageNum} href={buildUrl({ page: pageNum.toString() })}>
+                          <Badge
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
+                            className="cursor-pointer w-10 justify-center"
+                          >
+                            {pageNum}
+                          </Badge>
+                        </Link>
+                      )
+                    })}
+                  </div>
+
                   {currentPage < totalPages && (
-                    <a
-                      href={`/${category}?page=${currentPage + 1}${tag ? `&tag=${tag}` : ''}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`}
-                      className="px-4 py-2 border rounded-md hover:bg-gray-50"
-                    >
-                      下一页
-                    </a>
+                    <Link href={buildUrl({ page: (currentPage + 1).toString() })}>
+                      <Badge variant="outline" className="cursor-pointer px-4 py-2">
+                        下一页
+                      </Badge>
+                    </Link>
                   )}
                 </div>
               )}
             </>
           ) : (
             <Card className="p-12 text-center">
-              <p className="text-muted-foreground">暂无资源</p>
+              <p className="text-[var(--muted-foreground)]">暂无资源</p>
             </Card>
           )}
         </Suspense>

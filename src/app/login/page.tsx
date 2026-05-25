@@ -9,14 +9,23 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/auth'
 
-// 邮箱格式验证：必须包含 @ 和 .com 结尾
-function validateEmail(email: string): string | null {
-  if (!email) return '请输入邮箱地址'
-  if (!email.includes('@')) return '邮箱必须包含 @ 符号'
-  if (!email.endsWith('.com')) return '邮箱必须以 .com 结尾'
-  if (!/^[^\s@]+@[^\s@]+\.com$/.test(email)) return '请输入有效的邮箱格式'
+const EMAIL_DOMAINS = ['.com', '.cn', '.net', '.org', '.io', '.co', '.me', '.tv', '.cc', '.biz'] as const
+
+// 登录输入验证（支持用户名或邮箱）
+function validateLoginInput(login: string): string | null {
+  if (!login) return '请输入用户名或邮箱'
+  // 如果包含@，验证邮箱格式
+  if (login.includes('@')) {
+    if (!login.includes('@')) return '邮箱必须包含 @ 符号'
+    const domain = login.split('@')[1]
+    if (!domain || !domain.includes('.')) return '请输入有效的邮箱格式'
+    const isCommonDomain = EMAIL_DOMAINS.some(d => domain.endsWith(d))
+    if (!isCommonDomain && domain.split('.').pop()!.length < 2) {
+      return '请输入有效的邮箱域名'
+    }
+  }
   return null
 }
 
@@ -37,20 +46,33 @@ function validateUsername(username: string): string | null {
   return null
 }
 
+// 邮箱格式验证
+function validateEmail(email: string): string | null {
+  if (!email) return '请输入邮箱地址'
+  if (!email.includes('@')) return '邮箱必须包含 @ 符号'
+  const domain = email.split('@')[1]
+  if (!domain || !domain.includes('.')) return '请输入有效的邮箱格式'
+  const isCommonDomain = EMAIL_DOMAINS.some(d => domain.endsWith(d))
+  if (!isCommonDomain && domain.split('.').pop()!.length < 2) {
+    return '请输入有效的邮箱域名'
+  }
+  return null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState('')
+  const [loginInput, setLoginInput] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState('')
-  const [emailError, setEmailError] = useState('')
+  const [loginError, setLoginError] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [usernameError, setUsernameError] = useState('')
   const [confirmPasswordError, setConfirmPasswordError] = useState('')
 
   const clearErrors = () => {
-    setEmailError('')
+    setLoginError('')
     setPasswordError('')
     setConfirmPasswordError('')
     setUsernameError('')
@@ -60,9 +82,9 @@ export default function LoginPage() {
     e.preventDefault()
     clearErrors()
 
-    const emailValidation = validateEmail(email)
-    if (emailValidation) {
-      setEmailError(emailValidation)
+    const loginValidation = validateLoginInput(loginInput)
+    if (loginValidation) {
+      setLoginError(loginValidation)
       return
     }
 
@@ -75,41 +97,32 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: loginInput, password }),
       })
 
-      if (error) throw error
+      const data = await response.json()
 
+      if (!response.ok) {
+        throw new Error(data.error || '登录失败')
+      }
+
+      if (!data.user) {
+        throw new Error('登录失败：未获取到用户信息')
+      }
+
+      useAuthStore.getState().setAuth(data.user, data.token)
       toast.success('登录成功')
-      router.refresh()
 
-      // 管理员跳转到管理后台，普通用户跳转到首页
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single()
-
-        if (profile?.role === 'admin') {
-          router.push('/admin')
-        } else {
-          router.push('/')
-        }
+      if (data.user.role === 'admin') {
+        router.push('/admin')
       } else {
         router.push('/')
       }
     } catch (error: any) {
-      const errorMessage = error.message || ''
-      if (errorMessage.includes('Invalid login credentials')) {
-        toast.error('邮箱或密码错误')
-      } else if (errorMessage.includes('Email not confirmed')) {
-        toast.error('请先验证您的邮箱')
-      } else {
-        toast.error(errorMessage || '登录失败')
-      }
+      toast.error(error.message || '登录失败')
     } finally {
       setLoading(false)
     }
@@ -119,9 +132,9 @@ export default function LoginPage() {
     e.preventDefault()
     clearErrors()
 
-    const emailValidation = validateEmail(email)
+    const emailValidation = validateEmail(loginInput)
     if (emailValidation) {
-      setEmailError(emailValidation)
+      setLoginError(emailValidation)
       return
     }
 
@@ -145,56 +158,35 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-          },
-        },
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email: loginInput, password }),
       })
 
-      if (error) throw error
+      const data = await response.json()
 
-      toast.success('注册成功！请查收验证邮件完成激活', {
-        description: '验证邮箱后即可登录',
-      })
-    } catch (error: any) {
-      const errorMessage = error.message || ''
-      if (errorMessage.includes('already registered')) {
-        toast.error('该邮箱已被注册')
-      } else if (errorMessage.includes('duplicate key')) {
-        toast.error('用户名已被使用')
-      } else {
-        toast.error(errorMessage || '注册失败')
+      if (!response.ok) {
+        throw new Error(data.error || '注册失败')
       }
+
+      if (!data.user || !data.token) {
+        throw new Error('注册失败：未获取到有效凭证')
+      }
+
+      useAuthStore.getState().setAuth(data.user, data.token)
+      toast.success('注册成功！')
+      router.push('/')
+    } catch (error: any) {
+      toast.error(error.message || '注册失败')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEmailBlur = () => {
-    const error = validateEmail(email)
-    setEmailError(error || '')
-  }
-
-  const handleUsernameBlur = () => {
-    const error = validateUsername(username)
-    setUsernameError(error || '')
-  }
-
-  const handlePasswordBlur = () => {
-    const error = validatePassword(password)
-    setPasswordError(error || '')
-  }
-
-  const handleConfirmPasswordBlur = () => {
-    if (confirmPassword && password !== confirmPassword) {
-      setConfirmPasswordError('两次输入的密码不一致')
-    } else {
-      setConfirmPasswordError('')
-    }
+  const handleLoginInputBlur = () => {
+    const error = validateLoginInput(loginInput)
+    setLoginError(error || '')
   }
 
   return (
@@ -213,19 +205,19 @@ export default function LoginPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">邮箱</Label>
+                  <Label htmlFor="login-input">用户名 / 邮箱</Label>
                   <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={handleEmailBlur}
-                    className={emailError ? 'border-red-500' : ''}
+                    id="login-input"
+                    type="text"
+                    placeholder="输入用户名或邮箱"
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    onBlur={handleLoginInputBlur}
+                    className={loginError ? 'border-red-500' : ''}
                     required
                   />
-                  {emailError && (
-                    <p className="text-sm text-red-500">{emailError}</p>
+                  {loginError && (
+                    <p className="text-sm text-red-500">{loginError}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -258,7 +250,10 @@ export default function LoginPage() {
                     placeholder="选择用户名"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    onBlur={handleUsernameBlur}
+                    onBlur={() => {
+                      const error = validateUsername(username)
+                      setUsernameError(error || '')
+                    }}
                     className={usernameError ? 'border-red-500' : ''}
                     maxLength={20}
                     required
@@ -273,14 +268,13 @@ export default function LoginPage() {
                     id="register-email"
                     type="email"
                     placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={handleEmailBlur}
-                    className={emailError ? 'border-red-500' : ''}
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    className={loginError ? 'border-red-500' : ''}
                     required
                   />
-                  {emailError && (
-                    <p className="text-sm text-red-500">{emailError}</p>
+                  {loginError && (
+                    <p className="text-sm text-red-500">{loginError}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -291,7 +285,6 @@ export default function LoginPage() {
                     placeholder="至少 6 位"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onBlur={handlePasswordBlur}
                     className={passwordError ? 'border-red-500' : ''}
                     minLength={6}
                     required
@@ -311,7 +304,6 @@ export default function LoginPage() {
                     placeholder="再次输入密码"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    onBlur={handleConfirmPasswordBlur}
                     className={confirmPasswordError ? 'border-red-500' : ''}
                     minLength={6}
                     required
