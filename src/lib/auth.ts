@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const JWT_EXPIRES_IN = '7d'
@@ -40,7 +40,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
-  const result = await pool.query(
+  const result = await getPool().query(
     'SELECT id, username, email, role, avatar_url, coin_balance FROM users WHERE id = $1',
     [userId]
   )
@@ -48,7 +48,7 @@ export async function getUserById(userId: string): Promise<User | null> {
 }
 
 export async function getUserByEmail(email: string): Promise<(User & { password_hash: string }) | null> {
-  const result = await pool.query(
+  const result = await getPool().query(
     'SELECT id, username, email, role, avatar_url, coin_balance, password_hash FROM users WHERE email = $1',
     [email]
   )
@@ -56,7 +56,7 @@ export async function getUserByEmail(email: string): Promise<(User & { password_
 }
 
 export async function getUserByUsername(username: string): Promise<(User & { password_hash: string }) | null> {
-  const result = await pool.query(
+  const result = await getPool().query(
     'SELECT id, username, email, role, avatar_url, coin_balance, password_hash FROM users WHERE username = $1',
     [username]
   )
@@ -64,7 +64,7 @@ export async function getUserByUsername(username: string): Promise<(User & { pas
 }
 
 export async function createUser(username: string, email: string, passwordHash: string): Promise<User> {
-  const result = await pool.query(
+  const result = await getPool().query(
     `INSERT INTO users (username, email, password_hash, role, coin_balance)
      VALUES ($1, $2, $3, 'user', 0)
      RETURNING id, username, email, role, avatar_url, coin_balance`,

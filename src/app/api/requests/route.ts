@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 import { Request, Profile } from '@/types/database'
 
 interface RequestRow extends Request {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     // 获取总数
-    const countResult = await pool.query(`SELECT COUNT(*) FROM requests ${whereClause}`, params)
+    const countResult = await getPool().query(`SELECT COUNT(*) FROM requests ${whereClause}`, params)
     const total = Number(countResult.rows[0].count)
 
     // 获取数据
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     `
     params.push(pageSize, offset)
 
-    const dataResult = await pool.query<RequestRow>(dataSql, params)
+    const dataResult = await getPool().query<RequestRow>(dataSql, params)
 
     const data = dataResult.rows.map((row: RequestRow) => ({
       ...row,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await pool.query(
+    const result = await getPool().query(
       `INSERT INTO requests (user_id, title, description, category, status)
        VALUES ($1, $2, $3, $4, 'open')
        RETURNING *`,

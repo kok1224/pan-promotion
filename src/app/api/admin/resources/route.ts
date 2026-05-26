@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     // 获取总数
-    const countResult = await pool.query(`SELECT COUNT(*) FROM resources ${whereClause}`, params)
+    const countResult = await getPool().query(`SELECT COUNT(*) FROM resources ${whereClause}`, params)
     const total = Number(countResult.rows[0].count)
 
     // 获取数据
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     `
     params.push(pageSize, offset)
 
-    const dataResult = await pool.query(dataSql, params)
+    const dataResult = await getPool().query(dataSql, params)
 
     return NextResponse.json({
       data: dataResult.rows,

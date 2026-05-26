@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Users, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 import { AdminSidebar } from '@/components/admin-sidebar'
 
 async function getStats() {
@@ -15,10 +15,10 @@ async function getStats() {
     totalUsersResult,
     openRequestsResult
   ] = await Promise.all([
-    pool.query('SELECT COUNT(*) FROM resources'),
-    pool.query("SELECT COUNT(*) FROM resources WHERE status = 'pending'"),
-    pool.query('SELECT COUNT(*) FROM users'),
-    pool.query("SELECT COUNT(*) FROM requests WHERE status = 'open'"),
+    getPool().query('SELECT COUNT(*) FROM resources'),
+    getPool().query("SELECT COUNT(*) FROM resources WHERE status = 'pending'"),
+    getPool().query('SELECT COUNT(*) FROM users'),
+    getPool().query("SELECT COUNT(*) FROM requests WHERE status = 'open'"),
   ])
 
   return {
@@ -30,7 +30,7 @@ async function getStats() {
 }
 
 async function getRecentResources() {
-  const result = await pool.query(`
+  const result = await getPool().query(`
     SELECT r.*, u.username as uploader_username
     FROM resources r
     LEFT JOIN users u ON r.uploader_id = u.id
@@ -41,7 +41,7 @@ async function getRecentResources() {
 }
 
 async function getRecentRequests() {
-  const result = await pool.query(`
+  const result = await getPool().query(`
     SELECT r.*, u.username as requester_username
     FROM requests r
     LEFT JOIN users u ON r.user_id = u.id

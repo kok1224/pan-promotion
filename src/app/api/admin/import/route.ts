@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 import { verifyToken, extractTokenFromHeader, getUserById } from '@/lib/auth'
 
 interface ImportRow {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       const batch = data.slice(i, i + batchSize)
 
       for (const row of batch) {
-        const client = await pool.connect()
+        const client = await getPool().connect()
         try {
           await client.query('BEGIN')
 

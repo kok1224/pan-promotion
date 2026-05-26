@@ -15,6 +15,8 @@ function getPool(): Pool {
   return pool
 }
 
+export { getPool }
+
 export interface ResourcesResult {
   data: Resource[]
   total: number

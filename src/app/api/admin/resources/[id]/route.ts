@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pool } from '@/lib/neon'
+import { getPool } from '@/lib/neon'
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest) {
     else if (action === 'reject') statusUpdate = 'rejected'
 
     if (statusUpdate) {
-      await pool.query(
+      await getPool().query(
         'UPDATE resources SET status = $1, updated_at = NOW() WHERE id = $2',
         [statusUpdate, id]
       )
@@ -40,9 +40,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete pan_links first
-    await pool.query('DELETE FROM pan_links WHERE resource_id = $1', [id])
+    await getPool().query('DELETE FROM pan_links WHERE resource_id = $1', [id])
     // Then delete resource
-    await pool.query('DELETE FROM resources WHERE id = $1', [id])
+    await getPool().query('DELETE FROM resources WHERE id = $1', [id])
 
     return NextResponse.json({ success: true })
   } catch (error) {
