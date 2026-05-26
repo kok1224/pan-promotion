@@ -17,6 +17,11 @@ function getPool(): Pool {
 
 export { getPool }
 
+// Re-export pool for backwards compatibility (deprecated - use getPool())
+export const pool = {
+  query: (...args: Parameters<Pool['query']>) => getPool().query(...args),
+}
+
 export interface ResourcesResult {
   data: Resource[]
   total: number
