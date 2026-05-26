@@ -1,18 +1,18 @@
 import { Pool } from 'pg'
 import type { Tag } from '@/types/database'
 
-let pool: Pool | null = null
+let _pool: Pool | null = null
 
 function getPool(): Pool {
-  if (!pool) {
-    pool = new Pool({
+  if (!_pool) {
+    _pool = new Pool({
       connectionString: process.env.DATABASE_URL!,
       ssl: {
         rejectUnauthorized: false,
       },
     })
   }
-  return pool
+  return _pool
 }
 
 export { getPool }
