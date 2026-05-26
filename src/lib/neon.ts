@@ -1,14 +1,19 @@
 import { Pool } from 'pg'
 import type { Tag } from '@/types/database'
 
-const connectionString = process.env.DATABASE_URL!
+let pool: Pool | null = null
 
-export const pool = new Pool({
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-})
+function getPool(): Pool {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL!,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    })
+  }
+  return pool
+}
 
 export interface ResourcesResult {
   data: Resource[]
@@ -112,7 +117,7 @@ export async function getResources(options: {
 
   // 获取总数
   const countSql = `SELECT COUNT(*) FROM resources ${whereClause}`
-  const countResult = await pool.query(countSql, params)
+  const countResult = await getPool().query(countSql, params)
   const total = Number(countResult.rows[0].count)
 
   // 获取数据
@@ -136,7 +141,7 @@ export async function getResources(options: {
   `
   params.push(pageSize, offset)
 
-  const dataResult = await pool.query(dataSql, params)
+  const dataResult = await getPool().query(dataSql, params)
 
   return { data: dataResult.rows, total }
 }
@@ -175,7 +180,7 @@ export async function getAllResources(options: {
 
   // 获取总数
   const countSql = `SELECT COUNT(*) FROM resources ${whereClause}`
-  const countResult = await pool.query(countSql, params)
+  const countResult = await getPool().query(countSql, params)
   const total = Number(countResult.rows[0].count)
 
   // 获取数据
@@ -199,7 +204,7 @@ export async function getAllResources(options: {
   `
   params.push(pageSize, offset)
 
-  const dataResult = await pool.query(dataSql, params)
+  const dataResult = await getPool().query(dataSql, params)
 
   return { data: dataResult.rows, total }
 }
@@ -222,7 +227,7 @@ export async function getResource(id: string) {
     FROM resources r
     WHERE r.id = $1 AND r.status = 'approved'
   `
-  const result = await pool.query(sql, [id])
+  const result = await getPool().query(sql, [id])
   return result.rows[0] || null
 }
 
@@ -237,7 +242,7 @@ export async function getTags(category?: string): Promise<Tag[]> {
   }
 
   sql += ' ORDER BY use_count DESC LIMIT 20'
-  const result = await pool.query(sql, params)
+  const result = await getPool().query(sql, params)
   return result.rows
 }
 
@@ -249,7 +254,7 @@ export async function getResourceCounts() {
     WHERE status = 'approved'
     GROUP BY category
   `
-  const result = await pool.query(sql)
+  const result = await getPool().query(sql)
   const counts: Record<string, number> = {}
   for (const row of result.rows) {
     counts[row.category] = parseInt(row.count)
@@ -279,7 +284,7 @@ export async function getResourcesBySort(sort: 'latest' | 'views', limit = 8) {
     ORDER BY ${orderBy}
     LIMIT ${limit}
   `
-  const result = await pool.query(sql)
+  const result = await getPool().query(sql)
   return result.rows
 }
 
@@ -320,7 +325,7 @@ export async function getRequests(options: {
 
   // 获取总数
   const countSql = `SELECT COUNT(*) FROM requests ${whereClause}`
-  const countResult = await pool.query(countSql, params)
+  const countResult = await getPool().query(countSql, params)
   const total = Number(countResult.rows[0].count)
 
   // 获取数据 - 简化版
@@ -334,7 +339,7 @@ export async function getRequests(options: {
   `
   params.push(pageSize, offset)
 
-  const dataResult = await pool.query(dataSql, params)
+  const dataResult = await getPool().query(dataSql, params)
 
   interface RequestRow {
     id: string
@@ -380,7 +385,7 @@ export async function getRequestById(id: string): Promise<Request | null> {
     LEFT JOIN users u ON r.user_id = u.id
     WHERE r.id = $1
   `
-  const result = await pool.query(sql, [id])
+  const result = await getPool().query(sql, [id])
 
   if (result.rows.length === 0) {
     return null
