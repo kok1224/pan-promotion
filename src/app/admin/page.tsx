@@ -1,11 +1,12 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Users, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { pool } from '@/lib/neon'
 import { AdminSidebar } from '@/components/admin-sidebar'
-
-export const dynamic = 'force-dynamic'
 
 async function getStats() {
   const [
