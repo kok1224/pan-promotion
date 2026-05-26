@@ -5,11 +5,10 @@ let _pool: Pool | null = null
 
 function getPool(): Pool {
   if (!_pool) {
+    const url = new URL(process.env.DATABASE_URL!)
+    url.searchParams.set('sslmode', 'require')
     _pool = new Pool({
-      connectionString: process.env.DATABASE_URL!,
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      connectionString: url.toString(),
     })
   }
   return _pool

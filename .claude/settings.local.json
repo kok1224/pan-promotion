@@ -45,7 +45,10 @@
       "WebSearch",
       "mcp__Chrome_DevTools_MCP__navigate_page",
       "mcp__Chrome_DevTools_MCP__take_snapshot",
-      "mcp__Chrome_DevTools_MCP__list_network_requests"
+      "mcp__Chrome_DevTools_MCP__list_network_requests",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(npm show *)",
+      "mcp__context7__resolve-library-id"
     ]
   },
   "enableAllProjectMcpServers": true,

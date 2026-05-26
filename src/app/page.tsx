@@ -191,7 +191,7 @@ export default async function HomePage() {
               </h2>
               <p className="text-[var(--muted-foreground)] mt-1">最近更新的优质资源</p>
             </div>
-            <Button variant="outline" render={<Link href="/movies">查看更多</Link>} className="border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary)]/10" />
+            <Button variant="outline" nativeButton={false} render={<Link href="/movies">查看更多</Link>} className="border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary)]/10" />
           </div>
 
           {latestResources.length > 0 ? (
@@ -245,7 +245,7 @@ export default async function HomePage() {
                 </h2>
                 <p className="text-[var(--muted-foreground)] mt-1">浏览量最高的资源</p>
               </div>
-              <Button variant="outline" render={<Link href="/movies?sort=views">查看更多</Link>} className="border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary)]/10" />
+              <Button variant="outline" nativeButton={false} render={<Link href="/movies?sort=views">查看更多</Link>} className="border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary)]/10" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
