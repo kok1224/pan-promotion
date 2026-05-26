@@ -5,6 +5,8 @@ import { FileText, Users, MessageSquare, CheckCircle, Clock, AlertCircle } from 
 import { pool } from '@/lib/neon'
 import { AdminSidebar } from '@/components/admin-sidebar'
 
+export const dynamic = 'force-dynamic'
+
 async function getStats() {
   const [
     totalResourcesResult,
